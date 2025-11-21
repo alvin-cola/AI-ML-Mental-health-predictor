@@ -315,16 +315,44 @@ def main():
                         height=400
                     ).interactive() 
                     
+                    
+
+                   # --- DISPLAY: Detailed Category Percentages (Heuristic Chart) ---
+                    st.subheader('Detailed Category Breakdown (Percentages)')
+                    
+                    # Convert heuristic results to DataFrame for charting
+                    chart_data = pd.DataFrame(
+                        heuristic_scores.items(), 
+                        columns=['Category', 'Percentage']
+                    )
+                    # Sort by percentage descending, put Normal last
+                    chart_data['SortKey'] = chart_data.apply(
+                        lambda row: -row['Percentage'] if row['Category'] != 'Normal' else row['Percentage'], axis=1
+                    )
+                    chart_data = chart_data.sort_values('SortKey', ascending=True)
+
+                    # Create Altair bar chart (Code remains the same)
+                    # ...
+
                     st.altair_chart(chart, use_container_width=True)
                     
 
                     # Display the final results as a table
                     final_table = chart_data[['Category', 'Percentage']].rename(columns={'Percentage': 'Contribution (%)'}).set_index('Category')
-                    st.dataframe(final_table.style.format("{:.2f}%"), use_container_width=True)
+                    
+                    # FIX 1A: Use explicit dictionary formatting for robustness
+                    st.dataframe(final_table.style.format({'Contribution (%)': "{:.2f}%"}), use_container_width=True)
 
                     st.markdown('---')
                     st.markdown('#### Extracted Features')
-                    styled_df = input_df.style.format('{:.4f}', subset=pd.IndexSlice[:, input_df.columns.difference(['clean_text'])], escape='html')
+                    
+                    # FIX 1B: Ensure the column name is 'cleaned_text' (from previous fix)
+                    # AND remove escape='html' to prevent the 'Markup' error.
+                    styled_df = input_df.style.format(
+                        '{:.4f}', 
+                        subset=pd.IndexSlice[:, input_df.columns.difference(['cleaned_text'])] 
+                        # Removed escape='html'
+                    )
                     st.dataframe(styled_df, use_container_width=True)
 
                 except Exception as e:
