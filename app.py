@@ -64,18 +64,24 @@ vader = SentimentIntensityAnalyzer()
 english_stopwords = set(stopwords.words('english'))
 
 # Download necessary NLTK components once
+# Initialize VADER and STOPWORDS
+vader = SentimentIntensityAnalyzer()
+english_stopwords = set(stopwords.words('english'))
+
+# Download necessary NLTK components once
 @st.cache_resource
 def download_nltk_resources():
-    """Downloads NLTK resources and caches them to avoid repeated downloads."""
-    try:
-        nltk.data.find('sentiment/vader_lexicon.zip')
-    except nltk.downloader.DownloadError:
-        nltk.download('vader_lexicon', quiet=True)
-    try:
-        nltk.data.find('corpora/stopwords')
-    except nltk.downloader.DownloadError:
-        nltk.download('stopwords', quiet=True)
+    """Forces the download of NLTK resources and caches them."""
+    # Ensure VADER is downloaded
+    nltk.download('vader_lexicon', quiet=True)
+    # Ensure Stopwords are downloaded
+    nltk.download('stopwords', quiet=True)
+
 download_nltk_resources()
+# Download necessary NLTK components once
+# Initialize VADER and STOPWORDS
+vader = SentimentIntensityAnalyzer()
+english_stopwords = set(stopwords.words('english'))
 
 
 # --- Feature Extraction Functions (Replicating Notebook Logic) ---
