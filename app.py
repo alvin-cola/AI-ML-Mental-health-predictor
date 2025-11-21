@@ -59,15 +59,6 @@ CATEGORY_WEIGHTS = {
 # --- End Heuristic Category Definitions ---
 
 
-# Initialize VADER and STOPWORDS
-vader = SentimentIntensityAnalyzer()
-english_stopwords = set(stopwords.words('english'))
-
-# Download necessary NLTK components once
-# Initialize VADER and STOPWORDS
-vader = SentimentIntensityAnalyzer()
-english_stopwords = set(stopwords.words('english'))
-
 # Download necessary NLTK components once
 @st.cache_resource
 def download_nltk_resources():
