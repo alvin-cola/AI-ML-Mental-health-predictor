@@ -222,7 +222,7 @@ def main():
     # Explanation for the user about the two different outputs
     st.markdown("""
         <p style='color:red;'>
-        <strong>IMPORTANT NOTE:</strong> The underlying Machine Learning model is a <strong>binary classifier</strong> (High/Low Risk). 
+        <strong>IMPORTANT NOTE:</strong> The underlying Machine Learning model is a <strong>binary classifier</strong> (High/Low Risk) of Mental Health among Ugandans from their social media posts. 
         The primary label and the percentages shown below are a <strong>heuristic interpretation</strong> based on keywords and sentiment to provide detailed categories, as requested.
         </p>
     """, unsafe_allow_html=True)
