@@ -109,7 +109,7 @@ def extract_features(raw_text: str) -> Optional[pd.DataFrame]:
     word_count = len(raw_text.split())
     
     features_dict = {
-        'clean_text': text_processed,
+        'cleaned_text': text_processed,
         'text_length': text_length,
         'word_count': word_count,
         'exclamation_count': raw_text.count('!'),
