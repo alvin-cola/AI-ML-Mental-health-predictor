@@ -1,0 +1,10 @@
+streamlit
+joblib
+scikit-learn
+pandas
+nltk
+textblob
+vaderSentiment
+streamlit
+numpy
+altair
