@@ -68,9 +68,10 @@ def download_nltk_resources():
     # Ensure Stopwords are downloaded
     nltk.download('stopwords', quiet=True)
 
+# 1. CALL THE DOWNLOAD FUNCTION FIRST
 download_nltk_resources()
-# Download necessary NLTK components once
-# Initialize VADER and STOPWORDS
+
+# 2. INITIALIZE VADER AND STOPWORDS AFTER THE DOWNLOAD
 vader = SentimentIntensityAnalyzer()
 english_stopwords = set(stopwords.words('english'))
 
