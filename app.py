@@ -87,11 +87,13 @@ english_stopwords = set(stopwords.words('english'))
 # --- Feature Extraction Functions (Replicating Notebook Logic) ---
 
 def clean_text(text: str) -> str:
-    """Replicates the text cleaning step used before training."""
+    """Replicates the text cleaning step used before training and ensures clean tokens."""
     text = text.lower()
     text = re.sub(r'@\w+', '', text)
     text = re.sub(r'http\S+', '', text)
     text = re.sub(r'[^\w\s]', ' ', text)
+    text = re.sub(r'\s+', ' ', text)     
+    text = text.strip()                  
     return text
 
 def count_keywords(text: str, keywords: list) -> int:
