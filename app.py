@@ -17,9 +17,12 @@ MODEL_FILENAME = 'mental_health_predictor.joblib'
 
 # Define your keyword lists exactly as they were in your notebook!
 # NOTE: These are the original lists used for the *binary* classification model's features.
+# Line 20: Update RISK_KEYWORDS
 RISK_KEYWORDS = [
     'sad', 'alone', 'cry', 'hopeless', 'suicide', 'depressed', 
-    'anxiety', 'fear', 'lost', 'end it', 'die', 'worthless'
+    'anxiety', 'fear', 'lost', 'end it', 'die', 'worthless',
+    # ADDED HOMICIDAL KEYWORDS BELOW 👇
+    'kill', 'beat', 'murder', 'attack', 'gonna kill', 'gonna beat' 
 ]
 POSITIVE_KEYWORDS = [
     'happy', 'joy', 'love', 'hope', 'great', 'fun', 
@@ -38,8 +41,11 @@ PREDICTION_LABELS = {
 # These keywords are used to heuristically estimate the percentages for the user-requested categories.
 # The category with the highest score will be used as the primary output label.
 
+# Line 43: Update CATEGORY_KEYWORDS
 CATEGORY_KEYWORDS = {
     "Suicidal": ['suicide', 'kill myself', 'end it', 'not want to live', 'die', 'jump off', 'hang myself'],
+    # ADDED VIOLENCE/HOMICIDE CATEGORY 👇
+    "Violence/Homicide": ['kill', 'beat', 'murder', 'attack', 'stab', 'shoot', 'gonna kill', 'gonna beat', 'hurt someone'],
     "Depression": ['depressed', 'sad', 'empty', 'lonely', 'hopeless', 'worthless', 'mood swing', 'sleep too much', 'lack of energy'],
     "Anxiety": ['anxiety', 'nervous', 'scared', 'fear', 'panic', 'worry', 'trembling', 'heart racing', 'overthinking'],
     "Stress": ['stress', 'overwhelmed', 'pressure', 'deadline', 'workload', 'too much', 'burnt out', 'tired', 'fatigue'],
@@ -48,8 +54,10 @@ CATEGORY_KEYWORDS = {
 }
 
 # Heuristic weights for calculating percentages
+# Line 56: Update CATEGORY_WEIGHTS
 CATEGORY_WEIGHTS = {
     "Suicidal": 3.0,
+    "Violence/Homicide": 3.5, # Highest weight for immediate threat 👇
     "Depression": 2.5,
     "Anxiety": 2.0,
     "Stress": 1.5,
