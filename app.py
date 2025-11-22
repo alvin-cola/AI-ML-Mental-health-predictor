@@ -251,13 +251,17 @@ def main():
             if input_df is not None:
                 try:
                     # 1. PRIMARY MODEL PREDICTION (Binary) - Still calculated for reference/confidence
-                    prediction_numerical = predictor_pipeline.predict(input_df)[0]
-                    proba = predictor_pipeline.predict_proba(input_df)[0]
+                    # We must drop 'vader_neg' before passing to the model pipeline, as the model was trained without it
+                    model_input_df = input_df.drop(columns=['vader_neg']) 
+                    
+                    prediction_numerical = predictor_pipeline.predict(model_input_df)[0]
+                    proba = predictor_pipeline.predict_proba(model_input_df)[0]
                     risk_proba = proba[1] 
                     
                     # 2. HEURISTIC CATEGORY SCORING
-                    vader_compound_score = input_df['vader_compound'].iloc[0]
-                    heuristic_scores = calculate_heuristic_scores(user_input, vader_compound_score)
+                    # CRUCIAL CHANGE: Pass the new 'vader_neg' feature to the heuristic function
+                    vader_neg_score = input_df['vader_neg'].iloc[0]
+                    heuristic_scores = calculate_heuristic_scores(user_input, vader_neg_score)
                     
                     # 3. DETERMINE THE PRIMARY LABEL FROM HEURISTIC SCORES
                     top_category = max(heuristic_scores, key=heuristic_scores.get)
@@ -315,45 +319,26 @@ def main():
                         height=400
                     ).interactive() 
                     
-                    
-
-                   # --- DISPLAY: Detailed Category Percentages (Heuristic Chart) ---
-                    st.subheader('Detailed Category Breakdown (Percentages)')
-                    
-                    # Convert heuristic results to DataFrame for charting
-                    chart_data = pd.DataFrame(
-                        heuristic_scores.items(), 
-                        columns=['Category', 'Percentage']
-                    )
-                    # Sort by percentage descending, put Normal last
-                    chart_data['SortKey'] = chart_data.apply(
-                        lambda row: -row['Percentage'] if row['Category'] != 'Normal' else row['Percentage'], axis=1
-                    )
-                    chart_data = chart_data.sort_values('SortKey', ascending=True)
-
-                    # Create Altair bar chart (Code remains the same)
-                    # ...
-
                     st.altair_chart(chart, use_container_width=True)
+                    
                     
 
                     # Display the final results as a table
                     final_table = chart_data[['Category', 'Percentage']].rename(columns={'Percentage': 'Contribution (%)'}).set_index('Category')
-                    
-                    # FIX 1A: Use explicit dictionary formatting for robustness
+                    # Use explicit dictionary formatting for robustness
                     st.dataframe(final_table.style.format({'Contribution (%)': "{:.2f}%"}), use_container_width=True)
 
                     st.markdown('---')
-                    st.markdown('#### Extracted Features')
+                    st.markdown('#### Extracted Features (Including VADER Negative Score)')
                     
-                    # FIX 1B: Ensure the column name is 'cleaned_text' (from previous fix)
-                    # AND remove escape='html' to prevent the 'Markup' error.
+                    # Display all extracted features for debugging/transparency
+                    # We must exclude the 'vader_compound' column from the list of columns to be formatted as float
                     styled_df = input_df.style.format(
                         '{:.4f}', 
-                        subset=pd.IndexSlice[:, input_df.columns.difference(['cleaned_text'])] 
-                        # Removed escape='html'
+                        subset=pd.IndexSlice[:, input_df.columns.difference(['clean_text'])] 
                     )
                     st.dataframe(styled_df, use_container_width=True)
+
 
                 except Exception as e:
                     st.error(f"An error occurred during analysis: {e}")
