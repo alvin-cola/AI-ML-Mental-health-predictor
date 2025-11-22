@@ -87,12 +87,20 @@ def clean_text(text: str) -> str:
     return text
 
 def count_keywords(text: str, keywords: list) -> int:
-    """Counts occurrences of specific keywords in the text."""
+    """
+    Counts occurrences of specific keywords or phrases in the text
+    by looking for substrings, supporting multi-word phrases.
+    """
     count = 0
-    words = text.split()
-    for word in words:
-        if word in keywords:
-            count += 1
+    # Use the cleaned, lowercased text
+    text_processed = clean_text(text)
+    
+    # Iterate through all keywords (or phrases) defined in your list
+    for keyword in keywords:
+        # Use the string's count() method to detect occurrences of the phrase
+        # This correctly handles both single words ('sad') and phrases ('kill myself')
+        count += text_processed.count(keyword)
+        
     return count
 
 def extract_features(raw_text: str) -> Optional[pd.DataFrame]:
