@@ -16,6 +16,7 @@ from typing import Optional, Dict
 MODEL_FILENAME = 'mental_health_predictor.joblib' 
 
 # Define your keyword lists exactly as they were in your notebook!
+# NOTE: These are the original lists used for the *binary* classification model's features.
 RISK_KEYWORDS = [
     'sad', 'alone', 'cry', 'hopeless', 'suicide', 'depressed', 
     'anxiety', 'fear', 'lost', 'end it', 'die', 'worthless'
@@ -34,6 +35,9 @@ PREDICTION_LABELS = {
 # --- End Global Labels Dictionary ---
 
 # --- Heuristic Category Definitions ---
+# These keywords are used to heuristically estimate the percentages for the user-requested categories.
+# The category with the highest score will be used as the primary output label.
+
 CATEGORY_KEYWORDS = {
     "Suicidal": ['suicide', 'kill myself', 'end it', 'not want to live', 'die', 'jump off', 'hang myself'],
     "Depression": ['depressed', 'sad', 'empty', 'lonely', 'hopeless', 'worthless', 'mood swing', 'sleep too much', 'lack of energy'],
@@ -43,6 +47,7 @@ CATEGORY_KEYWORDS = {
     "Personality Disorder": ['unstable relationships', 'borderline', 'manipulative', 'split', 'self-harm', 'empty feeling'],
 }
 
+# Heuristic weights for calculating percentages
 CATEGORY_WEIGHTS = {
     "Suicidal": 3.0,
     "Depression": 2.5,
@@ -53,29 +58,22 @@ CATEGORY_WEIGHTS = {
 }
 # --- End Heuristic Category Definitions ---
 
-# --- NLTK Resource Initialization (THE FIX) ---
-@st.cache_resource
-def initialize_nltk_resources():
-    """
-    Downloads NLTK resources and returns the necessary objects (VADER and stopwords).
-    Uses Streamlit's cache to ensure this runs only once across deployments/sessions.
-    """
-    try:
-        # Download resources required by the application
-        nltk.download('vader_lexicon', quiet=True)
-        nltk.download('stopwords', quiet=True)
-        
-        # Initialize and return objects that rely on the downloaded data
-        vader_analyzer = SentimentIntensityAnalyzer()
-        english_stopwords_set = set(stopwords.words('english'))
-        
-        return vader_analyzer, english_stopwords_set
-    except Exception as e:
-        st.error(f"Failed to download NLTK resources: {e}")
-        st.stop()
 
-# Initialize VADER and STOPWORDS globally using the cached function
-vader, english_stopwords = initialize_nltk_resources()
+# Download necessary NLTK components once
+@st.cache_resource
+def download_nltk_resources():
+    """Forces the download of NLTK resources and caches them."""
+    # Ensure VADER is downloaded
+    nltk.download('vader_lexicon', quiet=True)
+    # Ensure Stopwords are downloaded
+    nltk.download('stopwords', quiet=True)
+
+# 1. CALL THE DOWNLOAD FUNCTION FIRST
+download_nltk_resources()
+
+# 2. INITIALIZE VADER AND STOPWORDS AFTER THE DOWNLOAD
+vader = SentimentIntensityAnalyzer()
+english_stopwords = set(stopwords.words('english'))
 
 
 # --- Feature Extraction Functions (Replicating Notebook Logic) ---
@@ -99,14 +97,13 @@ def count_keywords(text: str, keywords: list) -> int:
 
 def extract_features(raw_text: str) -> Optional[pd.DataFrame]:
     """
-    Generates the 11 features (1 text + 10 numerical) required by the pipeline and heuristics.
-    (Note: The model only uses 10 features, but the heuristic needs the new 'vader_neg' feature).
+    Generates the 10 features (1 text + 9 numerical) required by the pipeline.
     """
     if not raw_text.strip():
         return None
     
     text_processed = clean_text(raw_text)
-    sentiment_scores = vader.polarity_scores(raw_text) # Get all VADER scores
+    sentiment_scores = vader.polarity_scores(raw_text)
     blob = TextBlob(raw_text)
     
     text_length = len(raw_text)
@@ -122,20 +119,18 @@ def extract_features(raw_text: str) -> Optional[pd.DataFrame]:
         'risk_keywords_count': count_keywords(text_processed, RISK_KEYWORDS),
         'positive_keywords_count': count_keywords(text_processed, POSITIVE_KEYWORDS),
         'textblob_polarity': blob.sentiment.polarity,
-        'vader_compound': sentiment_scores['compound'],
-        'vader_neg': sentiment_scores['neg'] # ADDED: VADER negative score (0 to 1) for heuristics
+        'vader_compound': sentiment_scores['compound']
     }
     
     return pd.DataFrame([features_dict])
 
 
-# --- Heuristic Scoring Function (UPDATED) ---
+# --- Heuristic Scoring Function ---
 
-def calculate_heuristic_scores(text: str, vader_neg_score: float) -> Dict[str, float]:
+def calculate_heuristic_scores(text: str, vader_compound: float) -> Dict[str, float]:
     """
     Calculates heuristic percentage scores for detailed categories.
-    UPDATED: Uses vader_neg_score for influence, ensuring negative keywords 
-    always contribute significantly.
+    This is an interpretation based on keywords and sentiment, NOT the model's prediction.
     """
     text_processed = clean_text(text)
     raw_scores = {}
@@ -145,13 +140,12 @@ def calculate_heuristic_scores(text: str, vader_neg_score: float) -> Dict[str, f
         keyword_count = count_keywords(text_processed, keywords)
         weight = CATEGORY_WEIGHTS[category]
         
-        # Scoring Logic:
-        # Base Score is driven by keyword count and category weight.
-        # It is multiplied by (1 + vader_neg_score) to boost the score if the overall 
-        # VADER assessment is also negative (high vader_neg_score).
-        # This prevents the score from being zeroed out by a neutral/positive VADER compound score.
-        score = keyword_count * weight * (1.0 + vader_neg_score) 
+        # Combine keyword count with sentiment for an estimated score
+        # Maps [-1, 1] (VADER compound) to [0, 1]. Score increases as sentiment gets more negative (1 - compound) / 2
+        sentiment_influence = (1 - vader_compound) / 2 
         
+        # Heuristic: Score increases with keywords and is boosted by negative sentiment
+        score = keyword_count * weight * sentiment_influence
         raw_scores[category] = score
 
     # 2. Normalize and calculate 'Normal' percentage
@@ -207,8 +201,7 @@ def calculate_heuristic_scores(text: str, vader_neg_score: float) -> Dict[str, f
 def load_predictor():
     """Loads the model pipeline from the joblib file."""
     try:
-        # NOTE: Using the correct filename 'mental_health_predictor (1).joblib'
-        model = joblib.load(MODEL_FILENAME) 
+        model = joblib.load(MODEL_FILENAME)
         st.success("Model loaded successfully!")
         return model
     except FileNotFoundError:
@@ -229,7 +222,7 @@ def main():
     # Explanation for the user about the two different outputs
     st.markdown("""
         <p style='color:red;'>
-        <strong>IMPORTANT NOTE:</strong> The underlying Machine Learning model is a <strong>binary classifier</strong> (High/Low Risk). 
+        <strong>IMPORTANT NOTE:</strong> The underlying Machine Learning model is a <strong>binary classifier</strong> (High/Low Risk) of Mental Health among Ugandans from their social media posts. 
         The primary label and the percentages shown below are a <strong>heuristic interpretation</strong> based on keywords and sentiment to provide detailed categories, as requested.
         </p>
     """, unsafe_allow_html=True)
@@ -258,17 +251,13 @@ def main():
             if input_df is not None:
                 try:
                     # 1. PRIMARY MODEL PREDICTION (Binary) - Still calculated for reference/confidence
-                    # We must drop 'vader_neg' before passing to the model pipeline, as the model was trained without it
-                    model_input_df = input_df.drop(columns=['vader_neg']) 
-                    
-                    prediction_numerical = predictor_pipeline.predict(model_input_df)[0]
-                    proba = predictor_pipeline.predict_proba(model_input_df)[0]
+                    prediction_numerical = predictor_pipeline.predict(input_df)[0]
+                    proba = predictor_pipeline.predict_proba(input_df)[0]
                     risk_proba = proba[1] 
                     
                     # 2. HEURISTIC CATEGORY SCORING
-                    # CRUCIAL CHANGE: Pass the new 'vader_neg' feature to the heuristic function
-                    vader_neg_score = input_df['vader_neg'].iloc[0]
-                    heuristic_scores = calculate_heuristic_scores(user_input, vader_neg_score)
+                    vader_compound_score = input_df['vader_compound'].iloc[0]
+                    heuristic_scores = calculate_heuristic_scores(user_input, vader_compound_score)
                     
                     # 3. DETERMINE THE PRIMARY LABEL FROM HEURISTIC SCORES
                     top_category = max(heuristic_scores, key=heuristic_scores.get)
@@ -326,26 +315,45 @@ def main():
                         height=400
                     ).interactive() 
                     
-                    st.altair_chart(chart, use_container_width=True)
                     
+
+                   # --- DISPLAY: Detailed Category Percentages (Heuristic Chart) ---
+                    st.subheader('Detailed Category Breakdown (Percentages)')
+                    
+                    # Convert heuristic results to DataFrame for charting
+                    chart_data = pd.DataFrame(
+                        heuristic_scores.items(), 
+                        columns=['Category', 'Percentage']
+                    )
+                    # Sort by percentage descending, put Normal last
+                    chart_data['SortKey'] = chart_data.apply(
+                        lambda row: -row['Percentage'] if row['Category'] != 'Normal' else row['Percentage'], axis=1
+                    )
+                    chart_data = chart_data.sort_values('SortKey', ascending=True)
+
+                    # Create Altair bar chart (Code remains the same)
+                    # ...
+
+                    st.altair_chart(chart, use_container_width=True)
                     
 
                     # Display the final results as a table
                     final_table = chart_data[['Category', 'Percentage']].rename(columns={'Percentage': 'Contribution (%)'}).set_index('Category')
-                    # Use explicit dictionary formatting for robustness
+                    
+                    # FIX 1A: Use explicit dictionary formatting for robustness
                     st.dataframe(final_table.style.format({'Contribution (%)': "{:.2f}%"}), use_container_width=True)
 
                     st.markdown('---')
-                    st.markdown('#### Extracted Features (Including VADER Negative Score)')
+                    st.markdown('#### Extracted Features')
                     
-                    # Display all extracted features for debugging/transparency
-                    # We must exclude the 'vader_compound' column from the list of columns to be formatted as float
+                    # FIX 1B: Ensure the column name is 'cleaned_text' (from previous fix)
+                    # AND remove escape='html' to prevent the 'Markup' error.
                     styled_df = input_df.style.format(
                         '{:.4f}', 
-                        subset=pd.IndexSlice[:, input_df.columns.difference(['clean_text'])] 
+                        subset=pd.IndexSlice[:, input_df.columns.difference(['cleaned_text'])] 
+                        # Removed escape='html'
                     )
                     st.dataframe(styled_df, use_container_width=True)
-
 
                 except Exception as e:
                     st.error(f"An error occurred during analysis: {e}")
