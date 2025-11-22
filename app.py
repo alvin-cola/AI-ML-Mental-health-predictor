@@ -88,18 +88,14 @@ def clean_text(text: str) -> str:
 
 def count_keywords(text: str, keywords: list) -> int:
     """
-    Counts occurrences of specific keywords or phrases in the text
-    by looking for substrings, supporting multi-word phrases.
+    FIXED: Counts occurrences of specific keywords or phrases by looking for substrings, 
+    supporting multi-word phrases like 'kill myself'.
     """
     count = 0
-    # Use the cleaned, lowercased text
-    text_processed = clean_text(text)
-    
-    # Iterate through all keywords (or phrases) defined in your list
+    # Text passed here is already clean (lowercased, no punctuation)
     for keyword in keywords:
         # Use the string's count() method to detect occurrences of the phrase
-        # This correctly handles both single words ('sad') and phrases ('kill myself')
-        count += text_processed.count(keyword)
+        count += text.count(keyword)
         
     return count
 
