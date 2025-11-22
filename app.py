@@ -92,17 +92,17 @@ def clean_text(text: str) -> str:
     text = re.sub(r'@\w+', '', text)
     text = re.sub(r'http\S+', '', text)
     text = re.sub(r'[^\w\s]', ' ', text)
-    text = re.sub(r'\s+', ' ', text)     
-    text = text.strip()                  
+    text = re.sub(r'\s+', ' ', text)     # FIX: Collapse multiple spaces to one
+    text = text.strip()                  # FIX: Remove leading/trailing spaces
     return text
 
 def count_keywords(text: str, keywords: list) -> int:
     """
-    FIXED: Counts occurrences of specific keywords or phrases by looking for substrings, 
-    supporting multi-word phrases like 'kill myself'.
+    Counts occurrences of specific keywords or phrases by looking for substrings, 
+    relying on the caller to pass already cleaned text.
     """
     count = 0
-    # Text passed here is already clean (lowercased, no punctuation)
+    # Text passed here is already clean and lowercased
     for keyword in keywords:
         # Use the string's count() method to detect occurrences of the phrase
         count += text.count(keyword)
